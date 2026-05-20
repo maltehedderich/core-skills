@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentic Browsing Auditor"
+  short_description: "Verify and improve agentic browsing readiness"
+  default_prompt: "Use $agentic-browsing-auditor to audit the current page or repository and improve its agentic browsing readiness."
