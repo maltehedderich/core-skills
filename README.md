@@ -46,6 +46,7 @@ Use `--force` to overwrite existing files without prompting, or `--no-clobber` t
 
 | Skill | Use it to |
 | --- | --- |
+| [`add-ask-ai-footer`](skills/add-ask-ai-footer/README.md) | Add AI assistant summary links to a website footer while matching existing styling and provider link behavior. |
 | [`agentic-browsing-auditor`](skills/agentic-browsing-auditor/README.md) | Audit and improve a website, current page, or frontend repository for Lighthouse Agentic Browsing readiness. |
 
 After installation, invoke the skill by name in your AI tool. For example:

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ask AI Footer"
+  short_description: "Add AI summary links to site footers"
+  default_prompt: "Use $add-ask-ai-footer to add an Ask AI footer section to this website."
