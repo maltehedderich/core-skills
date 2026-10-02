@@ -107,7 +107,7 @@ Body
 
 func TestClaudeInstallSkillCopiesVerbatim(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("hi"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\ndescription: Sample\n---\nhi"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	dest := t.TempDir()
@@ -120,7 +120,7 @@ func TestClaudeInstallSkillCopiesVerbatim(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != "hi" {
+	if string(got) != "---\ndescription: Sample\n---\nhi" {
 		t.Errorf("contents = %q, want hi", got)
 	}
 }

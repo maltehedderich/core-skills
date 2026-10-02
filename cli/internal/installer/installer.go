@@ -22,8 +22,11 @@ const (
 	KindSkill
 )
 
-// Options re-exports fsutil.Options so callers don't need both packages.
-type Options = fsutil.Options
+// Options keeps filesystem behavior separate from conversion context.
+type Options struct {
+	fsutil.Options
+	KnownSkillNames []string
+}
 
 // Action re-exports fsutil.Action.
 type Action = fsutil.Action
@@ -39,14 +42,18 @@ const (
 
 // Result is the per-call summary of files an installer touched.
 type Result struct {
-	Written []string
-	Skipped []string
+	Written     []string
+	Skipped     []string
+	Conversions []Diagnostic
+	Warnings    []Diagnostic
 }
 
 // Merge appends other into r in place.
 func (r *Result) Merge(other Result) {
 	r.Written = append(r.Written, other.Written...)
 	r.Skipped = append(r.Skipped, other.Skipped...)
+	r.Conversions = append(r.Conversions, other.Conversions...)
+	r.Warnings = append(r.Warnings, other.Warnings...)
 }
 
 // Installer writes agents and skills for one target tool.
@@ -61,4 +68,11 @@ type Installer interface {
 	InstallAgent(a source.Agent, destRoot string, opts Options) (Result, error)
 	// InstallSkill writes a skill into destRoot using opts.
 	InstallSkill(s source.Skill, destRoot string, opts Options) (Result, error)
+}
+
+// Diagnostic identifies a conversion rule or a compatibility adjustment.
+type Diagnostic struct {
+	File    string
+	Rule    string
+	Message string
 }

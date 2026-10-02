@@ -10,9 +10,10 @@ import (
 
 // Skill is a parsed skills/<name>/SKILL.md artifact.
 type Skill struct {
-	Name        string
-	Description string
-	Dir         string
+	Name           string
+	InvocationName string
+	Description    string
+	Dir            string
 }
 
 // Skills loads every skills/<name>/SKILL.md under s.Root.
@@ -45,19 +46,24 @@ func (s *Source) Skills() ([]Skill, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", skillFile, err)
 		}
-		fm, _, err := parseFrontmatter(raw)
+		md, err := ParseSkillMarkdown(raw)
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", skillFile, err)
 		}
-		desc := fm["description"]
+		desc := Field(md.Metadata, "description").Value
+		invocationName := ""
+		if name := Field(md.Metadata, "name"); name != nil && ValidSkillName(name.Value) {
+			invocationName = name.Value
+		}
 		if desc == "" {
 			return nil, fmt.Errorf("missing description in %s", skillFile)
 		}
 
 		skills = append(skills, Skill{
-			Name:        entry.Name(),
-			Description: desc,
-			Dir:         skillDir,
+			Name:           entry.Name(),
+			InvocationName: invocationName,
+			Description:    desc,
+			Dir:            skillDir,
 		})
 	}
 

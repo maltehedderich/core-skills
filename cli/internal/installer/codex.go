@@ -11,7 +11,7 @@ import (
 )
 
 // Codex installs agents as native Codex custom-agent TOML files. Skills
-// install verbatim.
+// normalize invocation syntax and metadata for Codex.
 type Codex struct{}
 
 // Name returns "codex".
@@ -32,9 +32,9 @@ func (*Codex) InstallAgent(a source.Agent, destRoot string, opts Options) (Resul
 	return writeCodexAgent(a, destRoot, opts)
 }
 
-// InstallSkill recursively copies the source skill folder under destRoot.
+// InstallSkill prepares target-specific content before writing the skill.
 func (*Codex) InstallSkill(s source.Skill, destRoot string, opts Options) (Result, error) {
-	return copySkillDir(s, destRoot, opts)
+	return installConvertedSkill(s, destRoot, opts, "codex")
 }
 
 // Gemini installs agents as Gemini skill folders and writes under ~/.gemini.

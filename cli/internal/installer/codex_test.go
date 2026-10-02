@@ -99,7 +99,7 @@ func TestCodexRejectsBadAgentName(t *testing.T) {
 
 func TestCodexInstallSkillCopiesVerbatim(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("verbatim"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\ndescription: Sample\n---\nverbatim"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	dest := t.TempDir()
@@ -109,7 +109,7 @@ func TestCodexInstallSkillCopiesVerbatim(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, _ := os.ReadFile(filepath.Join(dest, "demo", "SKILL.md"))
-	if string(got) != "verbatim" {
+	if string(got) != "---\ndescription: Sample\n---\nverbatim" {
 		t.Errorf("got %q, want verbatim", got)
 	}
 }

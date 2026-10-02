@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"github.com/maltehedderich/core-skills/cli/internal/fsutil"
 	"github.com/maltehedderich/core-skills/cli/internal/installer"
 	"github.com/maltehedderich/core-skills/cli/internal/source"
 )
@@ -69,6 +70,8 @@ func runInstall(flags installFlags, stdin io.Reader, stdout, stderr io.Writer) e
 		return err
 	}
 
+	knownSkillNames := source.SkillNames(allSkills)
+
 	interactive := flags.agentsCSV == "" && flags.skillsCSV == ""
 
 	if interactive {
@@ -119,9 +122,12 @@ func runInstall(flags installFlags, stdin io.Reader, stdout, stderr io.Writer) e
 	}
 
 	opts := installer.Options{
-		Force:     flags.force,
-		NoClobber: flags.noClobber,
-		DryRun:    flags.dryRun,
+		KnownSkillNames: knownSkillNames,
+		Options: fsutil.Options{
+			Force:     flags.force,
+			NoClobber: flags.noClobber,
+			DryRun:    flags.dryRun,
+		},
 	}
 	if !flags.force && !flags.noClobber && interactive {
 		opts.OnConflict = newInteractiveConflictHandler(stdin, stdout)
@@ -147,6 +153,9 @@ func runInstall(flags installFlags, stdin io.Reader, stdout, stderr io.Writer) e
 	for _, a := range selectedAgents {
 		res, err := inst.InstallAgent(a, agentDest, opts)
 		totalRes.Merge(res)
+		if logErr := logDiagnostics(stdout, stderr, flags.verbose, res); logErr != nil {
+			return logErr
+		}
 		if err != nil {
 			failures = append(failures, fmt.Sprintf("agent %s: %v", a.Name, err))
 			if err := writef(stderr, "FAIL agent %s: %v\n", a.Name, err); err != nil {
@@ -161,6 +170,9 @@ func runInstall(flags installFlags, stdin io.Reader, stdout, stderr io.Writer) e
 	for _, s := range selectedSkills {
 		res, err := inst.InstallSkill(s, skillDest, opts)
 		totalRes.Merge(res)
+		if logErr := logDiagnostics(stdout, stderr, flags.verbose, res); logErr != nil {
+			return logErr
+		}
 		if err != nil {
 			failures = append(failures, fmt.Sprintf("skill %s: %v", s.Name, err))
 			if err := writef(stderr, "FAIL skill %s: %v\n", s.Name, err); err != nil {
@@ -183,6 +195,10 @@ func runInstall(flags installFlags, stdin io.Reader, stdout, stderr io.Writer) e
 	}
 	if err := writef(stdout, "  %d file(s) written, %d skipped\n",
 		len(totalRes.Written), len(totalRes.Skipped)); err != nil {
+		return err
+	}
+
+	if err := writef(stdout, "  %d conversion(s) prepared (file/rule pairs)\n", len(totalRes.Conversions)); err != nil {
 		return err
 	}
 
@@ -289,4 +305,20 @@ func isTTY(r io.Reader) bool {
 		return false
 	}
 	return term.IsTerminal(int(f.Fd()))
+}
+
+func logDiagnostics(stdout, stderr io.Writer, verbose bool, res installer.Result) error {
+	for _, d := range res.Warnings {
+		if err := writef(stderr, "warning: %s: %s: %s\n", d.File, d.Rule, d.Message); err != nil {
+			return err
+		}
+	}
+	if verbose {
+		for _, d := range res.Conversions {
+			if err := writef(stdout, "  convert %s: %s\n", d.File, d.Rule); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

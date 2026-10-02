@@ -44,9 +44,9 @@ func (*Claude) InstallAgent(a source.Agent, destRoot string, opts Options) (Resu
 	return writeOne(dest, rewritten, opts)
 }
 
-// InstallSkill recursively copies the source skill folder under destRoot.
+// InstallSkill prepares target-specific content before writing the skill.
 func (*Claude) InstallSkill(s source.Skill, destRoot string, opts Options) (Result, error) {
-	return copySkillDir(s, destRoot, opts)
+	return installConvertedSkill(s, destRoot, opts, "claude")
 }
 
 // rewriteClaudeName replaces the frontmatter `name:` line with the namespaced

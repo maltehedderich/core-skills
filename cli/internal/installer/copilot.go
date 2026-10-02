@@ -42,7 +42,7 @@ func (*Copilot) InstallSkill(s source.Skill, destRoot string, opts Options) (Res
 
 // writeOne is the single-file write helper used by every installer.
 func writeOne(dest string, contents []byte, opts Options) (Result, error) {
-	action, err := fsutil.WriteFile(dest, contents, opts)
+	action, err := fsutil.WriteFile(dest, contents, opts.Options)
 	if err != nil {
 		return Result{}, err
 	}

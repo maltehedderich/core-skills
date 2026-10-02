@@ -1,0 +1,4 @@
+interface:
+  display_name: "Google Keyword Research"
+  short_description: "Research SEO keywords and assess paid-search viability"
+  default_prompt: "Use $google-keyword-research to research relevant keywords for my product and market, or assess a paid Search test against contribution-based CPC ceilings and forecasts."
