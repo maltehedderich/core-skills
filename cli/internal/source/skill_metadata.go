@@ -18,6 +18,19 @@ type SkillMarkdown struct {
 
 // ParseSkillMarkdown parses and validates the required skill description.
 func ParseSkillMarkdown(raw []byte) (*SkillMarkdown, error) {
+	md, err := ParseMarkdown(raw)
+	if err != nil {
+		return nil, err
+	}
+	desc := Field(md.Metadata, "description")
+	if desc == nil || desc.Kind != yaml.ScalarNode || desc.Tag != "!!str" || strings.TrimSpace(desc.Value) == "" {
+		return nil, fmt.Errorf("missing description or invalid description (expected non-empty string)")
+	}
+	return md, nil
+}
+
+// ParseMarkdown splits optional frontmatter without requiring skill fields.
+func ParseMarkdown(raw []byte) (*SkillMarkdown, error) {
 	first := bytes.IndexByte(raw, '\n')
 	if first < 0 || strings.TrimSuffix(string(raw[:first]), "\r") != "---" {
 		return nil, fmt.Errorf("file does not start with frontmatter delimiter '---'")
@@ -36,10 +49,7 @@ func ParseSkillMarkdown(raw []byte) (*SkillMarkdown, error) {
 			if err != nil {
 				return nil, err
 			}
-			desc := Field(doc, "description")
-			if desc == nil || desc.Kind != yaml.ScalarNode || desc.Tag != "!!str" || strings.TrimSpace(desc.Value) == "" {
-				return nil, fmt.Errorf("missing description or invalid description (expected non-empty string)")
-			}
+
 			return &SkillMarkdown{Metadata: doc, Prefix: raw[:first+1], Suffix: raw[start:next], Body: raw[next:]}, nil
 		}
 		start = next

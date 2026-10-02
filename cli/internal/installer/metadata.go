@@ -141,3 +141,24 @@ func (c *conversion) unsupportedText(text string) {
 		c.warn("command injection", "Claude command injection is preserved; replace it with explicit execution instructions for Codex")
 	}
 }
+
+// Declared Claude arguments are variables even when they share a skill name.
+func declaredArguments(node *yaml.Node) map[string]bool {
+	names := make(map[string]bool)
+	if node == nil {
+		return names
+	}
+	switch node.Kind {
+	case yaml.ScalarNode:
+		for _, name := range strings.Fields(node.Value) {
+			names[name] = true
+		}
+	case yaml.SequenceNode:
+		for _, child := range node.Content {
+			if child.Kind == yaml.ScalarNode {
+				names[child.Value] = true
+			}
+		}
+	}
+	return names
+}

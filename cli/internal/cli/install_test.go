@@ -284,3 +284,110 @@ func TestInstallForceAndNoClobberConflict(t *testing.T) {
 		t.Errorf("stderr should explain mutex; got: %q", errOut)
 	}
 }
+
+func TestSkillConversionCLI(t *testing.T) {
+	repo := t.TempDir()
+	files := map[string]string{
+		"skills/first/SKILL.md":  "---\nname: first\ndescription: Use when Codex needs help.\ndisable-model-invocation: true\ncontext: fork\n---\nUse /second-alias or $second-alias.\n",
+		"skills/second/SKILL.md": "---\nname: second-alias\ndescription: Second skill\n---\n",
+	}
+	for path, raw := range files {
+		full := filepath.Join(repo, path)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(raw), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tool := range []string{"codex", "claude", "copilot", "gemini"} {
+		t.Run(tool, func(t *testing.T) {
+			dest := filepath.Join(t.TempDir(), "destination with spaces")
+			args := []string{"install", "--repo", repo, "--tool", tool, "--skills", "first", "--dest", dest}
+			code, out, errOut := runCLI(t, append(args, "--dry-run", "--verbose")...)
+			if code != 0 {
+				t.Fatalf("dry-run failed: %s", errOut)
+			}
+			if _, err := os.Stat(dest); !os.IsNotExist(err) {
+				t.Fatal("dry-run wrote files")
+			}
+			if tool == "codex" && (!strings.Contains(errOut, "context") || !strings.Contains(out, "automatic invocation policy")) {
+				t.Errorf("missing diagnostics: %s / %s", out, errOut)
+			}
+			code, normal, normalErr := runCLI(t, args...)
+			if code != 0 {
+				t.Fatalf("install failed: %s", normalErr)
+			}
+			if normalErr != errOut {
+				t.Errorf("dry-run warnings differ: %s / %s", errOut, normalErr)
+			}
+			if !strings.Contains(normal, "conversion(s) prepared") {
+				t.Error("missing conversion count")
+			}
+			got, err := os.ReadFile(filepath.Join(dest, "first", "SKILL.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := files["skills/first/SKILL.md"]
+			switch tool {
+			case "codex":
+				if !strings.Contains(string(got), "Use $second-alias or $second-alias.") {
+					t.Errorf("missing full catalog alias: %s", got)
+				}
+			case "claude":
+				if !strings.Contains(string(got), "Use /second-alias or /second-alias.") {
+					t.Errorf("missing full catalog alias: %s", got)
+				}
+			default:
+				if string(got) != want {
+					t.Error("non-target tool changed bytes")
+				}
+			}
+			if _, err := os.Stat(filepath.Join(dest, "second")); !os.IsNotExist(err) {
+				t.Error("installed unselected skill")
+			}
+			code, repeat, repeatErr := runCLI(t, args...)
+			if code != 0 {
+				t.Fatal(repeatErr)
+			}
+			if !strings.Contains(repeat, "0 file(s) written") {
+				t.Errorf("repeat install wrote files: %s", repeat)
+			}
+			target := filepath.Join(dest, "first", "SKILL.md")
+			if err := os.WriteFile(target, []byte("local edit"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			code, _, skipErr := runCLI(t, append(args, "--no-clobber")...)
+			if code != 0 {
+				t.Fatal(skipErr)
+			}
+			data, err := os.ReadFile(target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(data) != "local edit" {
+				t.Error("no-clobber overwrote file")
+			}
+			code, _, forceErr := runCLI(t, append(args, "--force")...)
+			if code != 0 {
+				t.Fatal(forceErr)
+			}
+			data, err = os.ReadFile(target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(data, got) {
+				t.Error("force didn't restore converted output")
+			}
+		})
+	}
+	for path, want := range files {
+		got, err := os.ReadFile(filepath.Join(repo, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != want {
+			t.Errorf("source edited: %s", path)
+		}
+	}
+}

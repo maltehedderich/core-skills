@@ -24,8 +24,9 @@ func (c *conversion) markdown(input string) string {
 	var fenceLen int
 	var convertFence bool
 	for _, line := range lines {
-		trimmed := strings.TrimLeft(line, " ")
-		indent := len(line) - len(trimmed)
+		content := markdownContent(line)
+		trimmed := strings.TrimLeft(content, " ")
+		indent := len(content) - len(trimmed)
 		marker, count := fenceMarker(trimmed)
 		if fence != 0 {
 			if marker == fence && count >= fenceLen && strings.TrimSpace(trimmed[count:]) == "" {
@@ -46,7 +47,7 @@ func (c *conversion) markdown(input string) string {
 			out.WriteString(line)
 			continue
 		}
-		if indent >= 4 || strings.HasPrefix(line, "\t") || referenceLinkRE.MatchString(line) {
+		if indent >= 4 || strings.HasPrefix(content, "\t") || referenceLinkRE.MatchString(content) {
 			flush()
 			out.WriteString(line)
 			continue
@@ -203,7 +204,7 @@ func (c *conversion) tokens(s string) string {
 	var replacements []replacement
 	for _, loc := range paths {
 		name := s[loc[2]:loc[3]]
-		if !c.names[name] || !tokenStart(s, loc[0]) || !(tokenEnd(s, loc[1]) || loc[1] < len(s) && s[loc[1]] == '/') {
+		if !c.names[name] || !tokenStart(s, loc[0]) || !pathEnd(s, loc[1]) {
 			continue
 		}
 		value := filepath.ToSlash(filepath.Join(c.dest, name))
@@ -214,6 +215,9 @@ func (c *conversion) tokens(s string) string {
 	}
 	for _, loc := range invocations {
 		name := s[loc[0]+1 : loc[1]]
+		if s[loc[0]] == '$' && c.arguments[name] {
+			continue
+		}
 		if !c.names[name] || !tokenStart(s, loc[0]) || !tokenEnd(s, loc[1]) || escaped(s, loc[0]) {
 			continue
 		}
@@ -240,4 +244,35 @@ func (c *conversion) tokens(s string) string {
 	}
 	out.WriteString(s[start:])
 	return out.String()
+}
+
+// Strip Markdown container prefixes for block classification only.
+func markdownContent(line string) string {
+	for {
+		trimmed := strings.TrimLeft(line, " ")
+		if len(line)-len(trimmed) > 3 {
+			return line
+		}
+		if strings.HasPrefix(trimmed, ">") {
+			line = strings.TrimPrefix(trimmed[1:], " ")
+			continue
+		}
+		for _, prefix := range []string{"- ", "* ", "+ "} {
+			if strings.HasPrefix(trimmed, prefix) {
+				return trimmed[len(prefix):]
+			}
+		}
+		i := 0
+		for i < len(trimmed) && trimmed[i] >= '0' && trimmed[i] <= '9' {
+			i++
+		}
+		if i > 0 && i+1 < len(trimmed) && (trimmed[i] == '.' || trimmed[i] == ')') && trimmed[i+1] == ' ' {
+			return trimmed[i+2:]
+		}
+		return line
+	}
+}
+
+func pathEnd(s string, i int) bool {
+	return tokenEnd(s, i) || i < len(s) && s[i] == '/'
 }

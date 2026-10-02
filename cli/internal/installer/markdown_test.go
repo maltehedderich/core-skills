@@ -39,6 +39,9 @@ func TestMarkdownConversion(t *testing.T) {
 
 func TestMarkdownPreserved(t *testing.T) {
 	examples := []string{
+		"> ```sh\n> $demo /other\n> ```",
+		"- ```sh\n  $demo /other\n  ```",
+		"1. ```sh\n   $demo /other\n   ```",
 		"https://example.com/demo https://example.com/$demo?q=/other",
 		"<https://example.com/$demo> <mailto:/demo>",
 		"[link](/demo) [link](../$demo/a) [link](foo(bar/$demo))",

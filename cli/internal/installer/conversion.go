@@ -16,6 +16,7 @@ import (
 type conversion struct {
 	tool, dest, file string
 	names            map[string]bool
+	arguments        map[string]bool
 	result           Result
 }
 
@@ -90,6 +91,7 @@ func prepareSkill(skill source.Skill, dest string, names []string, tool string) 
 	if name := source.Field(md.Metadata, "name"); name != nil && name.Tag == "!!str" && source.ValidSkillName(name.Value) {
 		c.names[name.Value] = true
 	}
+	c.arguments = declaredArguments(source.Field(md.Metadata, "arguments"))
 	c.file = "SKILL.md"
 	var optional *yaml.Node
 	optionalValid := true
@@ -148,7 +150,7 @@ func prepareSkill(skill source.Skill, dest string, names []string, tool string) 
 			c.unsupportedText(string(raw))
 			// Optional Markdown frontmatter is handled separately from its body.
 			if bytes.HasPrefix(raw, []byte("---\n")) || bytes.HasPrefix(raw, []byte("---\r\n")) {
-				other, err := source.ParseSkillMarkdown(raw)
+				other, err := source.ParseMarkdown(raw)
 				if err != nil {
 					c.warn("YAML", "repair optional Markdown frontmatter to enable conversion: "+err.Error())
 					continue

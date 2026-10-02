@@ -52,7 +52,7 @@ func (s *Source) Skills() ([]Skill, error) {
 		}
 		desc := Field(md.Metadata, "description").Value
 		invocationName := ""
-		if name := Field(md.Metadata, "name"); name != nil && ValidSkillName(name.Value) {
+		if name := Field(md.Metadata, "name"); name != nil && name.Tag == "!!str" && ValidSkillName(name.Value) {
 			invocationName = name.Value
 		}
 		if desc == "" {
