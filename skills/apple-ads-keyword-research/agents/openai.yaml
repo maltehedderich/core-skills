@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apple Ads Keyword Research"
+  short_description: "Read Apple Ads campaign data and research App Store keywords"
+  default_prompt: "Use $apple-ads-keyword-research to review my Apple Ads keyword and search term performance, or find relevant App Store keywords and their popularity for my app and market."

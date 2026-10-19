@@ -3,17 +3,19 @@
 
 CLI_DIR := cli
 KEYWORDS_DIR := skills/google-keyword-research
+APPLE_ADS_DIR := skills/apple-ads-keyword-research
 
-.PHONY: help cli-build test cli-test keywords-test check cli-vet cli-lint cli-release-check
+.PHONY: help cli-build test cli-test keywords-test apple-ads-test check cli-vet cli-lint cli-release-check
 
 help:
 	@printf '%s\n' \
 		'Usage: make <target>' \
 		'  help               Show available targets (default)' \
 		'  cli-build          Build cli/bin/dev/coreskills from local source' \
-		'  test               Run CLI and keyword research tests' \
+		'  test               Run CLI and skill script tests' \
 		'  cli-test           Run Go tests' \
-		'  keywords-test      Run Python tests; uv may download dependencies' \
+		'  keywords-test      Run Google keyword Python tests; uv may download dependencies' \
+		'  apple-ads-test     Run Apple Ads Python tests; uv may download dependencies' \
 		'  check              Run CLI CI checks (requires lint and release tools)' \
 		'  cli-vet            Run go vet' \
 		'  cli-lint           Run golangci-lint' \
@@ -22,13 +24,16 @@ help:
 cli-build:
 	cd "$(CLI_DIR)" && go build -o bin/dev/coreskills ./cmd/coreskills
 
-test: cli-test keywords-test
+test: cli-test keywords-test apple-ads-test
 
 cli-test:
 	cd "$(CLI_DIR)" && go test ./...
 
 keywords-test:
 	cd "$(KEYWORDS_DIR)" && uv run --with 'google-ads>=32,<33' python -m unittest discover -s tests -v
+
+apple-ads-test:
+	cd "$(APPLE_ADS_DIR)" && uv run --with 'pyjwt[crypto]>=2.10,<3' python -m unittest discover -s tests -v
 
 check: cli-test cli-vet cli-lint cli-release-check
 
