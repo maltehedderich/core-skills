@@ -1,0 +1,4 @@
+interface:
+  display_name: "Motion Design"
+  short_description: "Plan, build, and review product marketing films"
+  default_prompt: "Use $motion-design to plan a short launch film for this product, with key frames and a timed storyline for my sign-off before building it."

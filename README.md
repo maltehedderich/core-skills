@@ -50,6 +50,7 @@ Use `--force` to overwrite existing files without prompting, or `--no-clobber` t
 | [`agentic-browsing-auditor`](skills/agentic-browsing-auditor/README.md) | Audit and improve a website, current page, or frontend repository for Lighthouse Agentic Browsing readiness. |
 | [`apple-ads-keyword-research`](skills/apple-ads-keyword-research/README.md) | Read Apple Ads campaign, keyword, and search term performance and research App Store keywords with Apple's suggestions, popularity, and impression share. |
 | [`google-keyword-research`](skills/google-keyword-research/README.md) | Discover and prioritize Google keywords using search volumes, monthly trends, advertiser competition, and bid ranges. |
+| [`motion-design`](skills/motion-design/README.md) | Plan, build, and review short SaaS and app marketing films, with the storyline and key frames signed off before any animation. |
 
 After installation, invoke the skill by name. In Codex:
 
