@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Design"
+  short_description: "Design, build, and visually refine product interfaces"
+  default_prompt: "Use $frontend-design to improve this interface, reuse or establish its design system, and verify the result in the browser."

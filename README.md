@@ -49,6 +49,7 @@ Use `--force` to overwrite existing files without prompting, or `--no-clobber` t
 | [`add-ask-ai-footer`](skills/add-ask-ai-footer/README.md) | Add AI assistant summary links to a website footer while matching existing styling and provider link behavior. |
 | [`agentic-browsing-auditor`](skills/agentic-browsing-auditor/README.md) | Audit and improve a website, current page, or frontend repository for Lighthouse Agentic Browsing readiness. |
 | [`apple-ads-keyword-research`](skills/apple-ads-keyword-research/README.md) | Read Apple Ads campaign, keyword, and search term performance and research App Store keywords with Apple's suggestions, popularity, and impression share. |
+| [`frontend-design`](skills/frontend-design/README.md) | Design, build, and visually refine interfaces with a reusable design system and a render–inspect–fix workflow. |
 | [`google-keyword-research`](skills/google-keyword-research/README.md) | Discover and prioritize Google keywords using search volumes, monthly trends, advertiser competition, and bid ranges. |
 | [`motion-design`](skills/motion-design/README.md) | Plan, build, and review short SaaS and app marketing films, with the storyline and key frames signed off before any animation. |
 
