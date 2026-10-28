@@ -1,0 +1,16 @@
+name: check
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  MISE_ENV: ci
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+      - run: mise run check

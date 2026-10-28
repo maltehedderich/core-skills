@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: add-secret-to-terraform-tasks
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  fnox.toml gains CLOUDFLARE_API_TOKEN as a Proton Pass reference with a description and no value.
+  The with_tf_secrets wrapper in mise.toml lists the new key, and mise.ci.toml still empties it.
+  Both Terraform steps in .github/workflows/terraform.yml map CLOUDFLARE_API_TOKEN from GitHub
+  secrets. Each environment declares the cloudflare/cloudflare provider. Task names stay unchanged.
+  The report tells the user to create a CLOUDFLARE_API_TOKEN item in acme-web-development,
+  acme-web-staging and acme-web-production and a matching secret in each GitHub environment.
+  No secret value is printed or invented, and tf:plan or tf:apply is not run against staging or production.

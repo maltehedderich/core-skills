@@ -51,6 +51,7 @@ Use `--force` to overwrite existing files without prompting, or `--no-clobber` t
 | [`apple-ads-keyword-research`](skills/apple-ads-keyword-research/README.md) | Read Apple Ads campaign, keyword, and search term performance and research App Store keywords with Apple's suggestions, popularity, and impression share. |
 | [`frontend-design`](skills/frontend-design/README.md) | Design, build, and visually refine interfaces with a reusable design system and a render–inspect–fix workflow. |
 | [`google-keyword-research`](skills/google-keyword-research/README.md) | Discover and prioritize Google keywords using search volumes, monthly trends, advertiser competition, and bid ranges. |
+| [`mise`](skills/mise/README.md) | Set up projects with mise tools and tasks under one shared task-naming convention, migrate Makefiles, and wire secrets from Proton Pass locally and GitHub secrets in CI. |
 | [`motion-design`](skills/motion-design/README.md) | Plan, build, and review short SaaS and app marketing films, with the storyline and key frames signed off before any animation. |
 
 After installation, invoke the skill by name. In Codex:

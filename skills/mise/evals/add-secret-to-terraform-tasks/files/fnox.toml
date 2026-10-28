@@ -1,0 +1,27 @@
+#:schema https://fnox.jdx.dev/schema.json
+# Secret values live in Proton Pass; this file holds references only.
+# Vaults: acme-web-development, acme-web-staging, acme-web-production.
+# CI does not use this file: its secrets come from GitHub environment secrets.
+if_missing = "error"
+env = "exec"
+redact_exec = true
+
+[providers.protonpass]
+type = "proton-pass"
+vault = "acme-web-development"
+
+[secrets]
+HCLOUD_TOKEN = { provider = "protonpass", value = "HCLOUD_TOKEN", description = "Hetzner Cloud API token for Terraform" }
+TF_VAR_db_password = { provider = "protonpass", value = "TF_VAR_db_password", description = "Database admin password" }
+
+[profiles.development.providers.protonpass]
+type = "proton-pass"
+vault = "acme-web-development"
+
+[profiles.staging.providers.protonpass]
+type = "proton-pass"
+vault = "acme-web-staging"
+
+[profiles.production.providers.protonpass]
+type = "proton-pass"
+vault = "acme-web-production"

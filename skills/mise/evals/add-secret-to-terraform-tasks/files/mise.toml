@@ -1,0 +1,72 @@
+min_version = "2026.10.0"
+
+[settings]
+lockfile = true
+
+[tools]
+terraform = "1.17"
+fnox = "1.43"
+"aqua:protonpass/pass-cli" = "2.5"
+
+[vars]
+tf_dir = "terraform/environments"
+# Prefix for Terraform commands that need secrets. Locally, fnox reads them from the vault
+# of the profile in FNOX_PROFILE. mise.ci.toml empties it, because CI sets them itself.
+with_tf_secrets = "fnox exec --only HCLOUD_TOKEN,TF_VAR_db_password --if-missing error --"
+
+[task_templates.env-arg]
+usage = '''
+arg "<env>" help="Target environment" {
+  choices "development" "staging" "production"
+}
+'''
+
+[tasks.lint]
+description = "Run read-only static checks"
+depends = ["tf:lint"]
+
+[tasks.format]
+description = "Format all files"
+depends = ["tf:format"]
+
+[tasks.check]
+description = "Run everything CI gates on"
+depends = ["lint"]
+
+[tasks."tf:init"]
+description = "Initialize Terraform for an environment"
+extends = "env-arg"
+run = "FNOX_PROFILE={{ usage.env }} {{ vars.with_tf_secrets }} terraform -chdir={{ vars.tf_dir }}/{{ usage.env }} init -input=false"
+
+[tasks."tf:plan"]
+description = "Plan Terraform changes for an environment and save them to tfplan"
+extends = "env-arg"
+depends = [{ task = "tf:init", args = ["{{ usage.env }}"] }]
+run = "FNOX_PROFILE={{ usage.env }} {{ vars.with_tf_secrets }} terraform -chdir={{ vars.tf_dir }}/{{ usage.env }} plan -input=false -out=tfplan"
+
+[tasks."tf:apply"]
+description = "Apply the saved Terraform plan to an environment"
+extends = "env-arg"
+confirm = "Apply the saved Terraform plan to {{ usage.env }}?"
+run = "FNOX_PROFILE={{ usage.env }} {{ vars.with_tf_secrets }} terraform -chdir={{ vars.tf_dir }}/{{ usage.env }} apply -input=false tfplan"
+
+[tasks."tf:output"]
+description = "Print Terraform outputs for an environment"
+extends = "env-arg"
+run = "FNOX_PROFILE={{ usage.env }} {{ vars.with_tf_secrets }} terraform -chdir={{ vars.tf_dir }}/{{ usage.env }} output"
+
+[tasks."tf:lint"]
+description = "Check Terraform formatting and validate every environment"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+terraform fmt -check -recursive terraform
+for dir in {{ vars.tf_dir }}/*/; do
+  terraform -chdir="$dir" init -backend=false -input=false >/dev/null
+  terraform -chdir="$dir" validate
+done
+'''
+
+[tasks."tf:format"]
+description = "Format all Terraform files"
+run = "terraform fmt -recursive terraform"

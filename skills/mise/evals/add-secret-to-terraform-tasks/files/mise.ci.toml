@@ -1,0 +1,7 @@
+# mise.ci.toml, loaded when MISE_ENV=ci
+# CI sets secrets from its own secret store, so commands run without fnox.
+[vars]
+with_tf_secrets = ""
+
+[settings]
+disable_tools = ["fnox", "aqua:protonpass/pass-cli"]

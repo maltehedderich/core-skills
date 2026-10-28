@@ -1,0 +1,8 @@
+mise.local.toml
+mise.*.local.toml
+fnox.local.toml
+.fnox.local.toml
+.terraform/
+tfplan
+*.tfstate
+*.tfstate.*

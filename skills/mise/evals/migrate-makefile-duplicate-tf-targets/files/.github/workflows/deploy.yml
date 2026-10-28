@@ -1,0 +1,21 @@
+name: deploy
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        type: choice
+        options: [dev, staging, prod]
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: touch .env && make terraform-plan ENV=${{ inputs.env }}
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          TF_VAR_db_password: ${{ secrets.TF_VAR_db_password }}
+      - run: touch .env && make terraform-apply ENV=${{ inputs.env }}
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          TF_VAR_db_password: ${{ secrets.TF_VAR_db_password }}

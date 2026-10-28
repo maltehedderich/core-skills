@@ -1,0 +1,6 @@
+interface:
+  display_name: "mise"
+  short_description: "Set up and migrate projects to mise tools, tasks, and secrets"
+  default_prompt: "Use $mise to set up this repository's tools and tasks with mise, following the shared task-naming convention, and replace any Makefile targets."
+policy:
+  allow_implicit_invocation: false

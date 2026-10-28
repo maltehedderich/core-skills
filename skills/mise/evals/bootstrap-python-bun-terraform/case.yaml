@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: bootstrap-python-bun-terraform
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  mise.toml pins python, uv, bun, terraform, fnox and the Proton Pass CLI (aqua:protonpass/pass-cli) as
+  major.minor versions with lockfile = true, uses uv for Python and bun for web/, and defines canonical
+  tasks (setup, dev, build, test, lint, format, typecheck where it applies, check, tf:init/plan/apply/destroy/output
+  <env>, tf:lint, tf:format). The tf:* tasks share one env-arg template with the choices development,
+  staging and production. Terraform lives in terraform/environments/<env>/ plus terraform/modules/.
+  fnox.toml references HCLOUD_TOKEN and TF_VAR_db_password in Proton Pass vaults named after the
+  project and environment, contains no secret values, and the Terraform commands get them through a
+  with_tf_secrets wrapper. mise.ci.toml empties the wrapper, and the workflows set MISE_ENV=ci and
+  map GitHub environment secrets onto the Terraform steps. The report lists the vaults, items and
+  GitHub environment secrets the user must create. Nothing is applied.

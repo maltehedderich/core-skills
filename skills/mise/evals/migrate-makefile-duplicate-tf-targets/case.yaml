@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: migrate-makefile-duplicate-tf-targets
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  The Makefile is gone and mise.toml defines tasks with canonical names only: setup, dev, test,
+  test:unit, lint, format, check, docker:build, deploy <env>, db:migrate [env], and tf:init/plan/apply <env>.
+  The duplicate Terraform targets collapse into tf:* tasks that take a validated environment argument
+  (development, staging, production), with no environment or "terraform" in any task name and no aliases.
+  Terraform moves from infra/{dev,staging,prod} to terraform/environments/{development,staging,production}.
+  Secrets come from fnox with Proton Pass locally, and CI uses mise with MISE_ENV=ci and GitHub secrets.
+  CI workflows and the README call mise run. The report maps every old target to its new task and points
+  out that terraform-apply used -auto-approve while tf-apply did not, without silently picking one.
+  Nothing is applied or deployed.
