@@ -4,8 +4,9 @@
 CLI_DIR := cli
 KEYWORDS_DIR := skills/google-keyword-research
 APPLE_ADS_DIR := skills/apple-ads-keyword-research
+GRAFANA_DIR := skills/grafana
 
-.PHONY: help cli-build test cli-test keywords-test apple-ads-test check cli-vet cli-lint cli-release-check
+.PHONY: help cli-build test cli-test keywords-test apple-ads-test grafana-test check cli-vet cli-lint cli-release-check
 
 help:
 	@printf '%s\n' \
@@ -16,6 +17,7 @@ help:
 		'  cli-test           Run Go tests' \
 		'  keywords-test      Run Google keyword Python tests; uv may download dependencies' \
 		'  apple-ads-test     Run Apple Ads Python tests; uv may download dependencies' \
+		'  grafana-test       Run Grafana dashboard renderer tests' \
 		'  check              Run CLI CI checks (requires lint and release tools)' \
 		'  cli-vet            Run go vet' \
 		'  cli-lint           Run golangci-lint' \
@@ -24,7 +26,7 @@ help:
 cli-build:
 	cd "$(CLI_DIR)" && go build -o bin/dev/coreskills ./cmd/coreskills
 
-test: cli-test keywords-test apple-ads-test
+test: cli-test keywords-test apple-ads-test grafana-test
 
 cli-test:
 	cd "$(CLI_DIR)" && go test ./...
@@ -34,6 +36,9 @@ keywords-test:
 
 apple-ads-test:
 	cd "$(APPLE_ADS_DIR)" && uv run --with 'pyjwt[crypto]>=2.10,<3' python -m unittest discover -s tests -v
+
+grafana-test:
+	cd "$(GRAFANA_DIR)" && uv run python -m unittest discover -s tests -v
 
 check: cli-test cli-vet cli-lint cli-release-check
 

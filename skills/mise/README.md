@@ -16,7 +16,7 @@ Replace `codex` with `claude`, `copilot`, or `gemini` for another tool.
 
 ## Use
 
-The skill runs only when you invoke it: `$mise` in Codex, `/mise` in Claude Code. It does not load into every conversation on its own. Work from the project's repository so the assistant can read its Makefile, CI workflows, and Terraform layout.
+The assistant can select this skill automatically for relevant tooling and task requests. You can also invoke it with `$mise` in Codex or `/mise` in Claude Code. Work from the project's repository so the assistant can read its Makefile, CI workflows, and Terraform layout.
 
 ```text
 Use $mise to replace our Makefile with mise tasks. Merge duplicate targets into the canonical names and update CI.

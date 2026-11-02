@@ -1,0 +1,6 @@
+interface:
+  display_name: "Grafana"
+  short_description: "Lean Grafana Cloud monitoring for a solo app portfolio"
+  default_prompt: "Use $grafana to set up useful application metrics and Grafana Cloud dashboards within the free-tier budget."
+policy:
+  allow_implicit_invocation: false

@@ -1,14 +1,13 @@
 ---
 name: mise
 description: "Set up, migrate, or maintain a project on the team's mise stack: mise tools and tasks under one shared task-naming convention, uv for Python, bun for JavaScript and TypeScript, Terraform in terraform/, and optional fnox secrets (Proton Pass locally, GitHub secrets in CI). Invoke it to replace a Makefile, justfile, or package scripts, add or rename tasks, add secrets or environments, or bootstrap a repository."
-disable-model-invocation: true
 ---
 
 # mise
 
 Every project uses the same tools, and every task has the same name in every repository. mise installs the tools and runs the tasks. uv runs Python, bun runs JavaScript and TypeScript, and Terraform lives in `terraform/`. When tasks need secrets on a developer's machine, fnox reads them from Proton Pass. In CI, they come from the CI system's own secret store. Someone who knows one project can run `mise run setup`, `mise run check`, or `mise run tf:plan staging` in any other without reading its config.
 
-The user invokes this skill explicitly. With a specific request, do that job. Without one, inspect the repository, report where it differs from the stack, and propose the changes before making them.
+Use this skill for relevant tooling and task requests, or when the user invokes it explicitly. With a specific request, do that job. Without one, inspect the repository, report where it differs from the stack, and propose the changes before making them.
 
 ## The stack
 

@@ -51,6 +51,7 @@ Use `--force` to overwrite existing files without prompting, or `--no-clobber` t
 | [`apple-ads-keyword-research`](skills/apple-ads-keyword-research/README.md) | Read Apple Ads campaign, keyword, and search term performance and research App Store keywords with Apple's suggestions, popularity, and impression share. |
 | [`frontend-design`](skills/frontend-design/README.md) | Design, build, and visually refine interfaces with a reusable design system and a render–inspect–fix workflow. |
 | [`google-keyword-research`](skills/google-keyword-research/README.md) | Discover and prioritize Google keywords using search volumes, monthly trends, advertiser competition, and bid ranges. |
+| [`grafana`](skills/grafana/README.md) | Set up lean Grafana Cloud metrics and application or portfolio dashboards for web and mobile apps on GCP and AWS. |
 | [`mise`](skills/mise/README.md) | Set up projects with mise tools and tasks under one shared task-naming convention, migrate Makefiles, and wire secrets from Proton Pass locally and GitHub secrets in CI. |
 | [`motion-design`](skills/motion-design/README.md) | Plan, build, and review short SaaS and app marketing films, with the storyline and key frames signed off before any animation. |
 
@@ -93,7 +94,7 @@ From the repository root, use GNU Make 3.81 or newer with a POSIX shell:
 ```sh
 make                 # Show available targets
 make cli-build       # Build cli/bin/dev/coreskills from local source
-make test            # Run Go and keyword research Python tests
+make test            # Run Go and skill script Python tests
 make check           # Run the CLI checks used in CI
 ```
 
