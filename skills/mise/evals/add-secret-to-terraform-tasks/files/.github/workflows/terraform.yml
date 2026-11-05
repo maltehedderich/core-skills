@@ -7,24 +7,18 @@ on:
         type: choice
         options: [development, staging, production]
 
-env:
-  MISE_ENV: ci
-
 jobs:
   apply:
     runs-on: ubuntu-latest
     environment: ${{ inputs.env }}
     concurrency: terraform-${{ inputs.env }}
     env:
-      TF_ENV: ${{ inputs.env }}
+      MISE_ENV: ${{ inputs.env }}
+      SECRETS_FROM_ENV: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
-      - run: mise run tf:plan "$TF_ENV"
-        env:
-          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
-          TF_VAR_db_password: ${{ secrets.TF_VAR_db_password }}
-      - run: mise run tf:apply "$TF_ENV"
+      - run: mise run tf:apply
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
           TF_VAR_db_password: ${{ secrets.TF_VAR_db_password }}

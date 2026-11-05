@@ -4,9 +4,6 @@ on:
   push:
     branches: [main]
 
-env:
-  MISE_ENV: ci
-
 jobs:
   check:
     runs-on: ubuntu-latest

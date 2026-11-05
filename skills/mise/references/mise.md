@@ -1,18 +1,18 @@
-# mise: tools, environment, and tasks
+# mise: tools, environments, and tasks
 
-Verified against mise 2026.10.21. When a detail matters and may have changed, check the current docs (Context7 library `/jdx/mise`, or https://mise.jdx.dev).
+Verified against mise 2026.11.2. When a detail matters and may have changed, check the current docs (Context7 library `/jdx/mise`, or https://mise.jdx.dev).
 
 ## Contents
 
 - [Files](#files)
 - [Base configuration](#base-configuration)
+- [Environments](#environments)
 - [Tools and the lockfile](#tools-and-the-lockfile)
 - [Python with uv](#python-with-uv)
 - [JavaScript and TypeScript with bun](#javascript-and-typescript-with-bun)
 - [Environment variables](#environment-variables)
 - [Tasks](#tasks)
 - [Monorepos](#monorepos)
-- [The ci config environment](#the-ci-config-environment)
 - [Trust and shell activation](#trust-and-shell-activation)
 - [Pitfalls](#pitfalls)
 - [Deliberately not used](#deliberately-not-used)
@@ -23,9 +23,9 @@ Verified against mise 2026.10.21. When a detail matters and may have changed, ch
 | --- | --- | --- |
 | `mise.toml` | Yes | Tools, settings, non-secret env, vars, task templates, tasks. |
 | `mise.lock` | Yes | Exact tool versions, URLs, and checksums for every platform. |
+| `mise.<env>.toml` | Yes | One per deployment environment (`mise.development.toml`, `mise.staging.toml`, `mise.production.toml`): `DEPLOY_ENV` and that environment's other non-secret settings. See [Environments](#environments). |
 | `mise-tasks/` | Yes | File tasks: one script per task, named by path. |
-| `mise.ci.toml` | Yes | CI differences, loaded with `MISE_ENV=ci`. Only projects with fnox need it. See [ci.md](ci.md#the-ci-config-environment). |
-| `mise.local.toml`, `mise.*.local.toml` | No | Personal overrides. Add both patterns to `.gitignore`. |
+| `mise.local.toml`, `mise.*.local.toml` | No | Personal overrides, for every environment or for one (`mise.staging.local.toml`). Add both patterns to `.gitignore`. |
 
 Keep tool versions only in `mise.toml`. When adopting the stack, remove `.tool-versions`, `.nvmrc`, `.node-version`, `.python-version`, `.terraform-version`, and `.bun-version` after moving their versions into `[tools]`. Two sources of truth eventually disagree. A stale `.python-version` also makes uv request an interpreter mise did not install.
 
@@ -45,28 +45,64 @@ python = "3.14"                    # Python projects
 uv = "0.13"                        # Python projects
 bun = "1.4"                        # JavaScript/TypeScript projects
 terraform = "1.17"                 # projects with terraform/
-fnox = "1.43"                      # only when tasks need secrets locally
+fnox = "1.47"                      # only when tasks need secrets locally
 "aqua:protonpass/pass-cli" = "2.5" # with fnox's default Proton Pass backend
 
 [env]
 UV_PYTHON_PREFERENCE = "only-system" # Python projects: uv uses the Python mise puts on PATH
+DEPLOY_ENV = false                   # projects with deployment environments: only mise.<env>.toml sets it
 
 [vars]
-# Values for templates; see terraform.md.
+# Values for templates; see terraform.md and secrets.md.
 
-[task_templates.env-arg]
-usage = '''
-arg "<env>" help="Target environment" {
-  choices "development" "staging" "production"
-}
-'''
+[task_templates.deployed]
+env = { DEPLOY_ENV = { required = "Select an environment: mise -E <development|staging|production> run <task>" } }
 
 [tasks.setup]
 description = "Install project dependencies from the lockfiles"
 run = "uv sync --locked"
 ```
 
-The versions above were current in October 2026. For a new project, ask mise for today's versions (`mise latest terraform`) and write the major.minor, as above, rather than copying these.
+The versions above were current in November 2026. For a new project, ask mise for today's versions (`mise latest terraform`) and write the major.minor, as above, rather than copying these.
+
+## Environments
+
+Each deployment environment is a mise config environment. `mise -E staging` (or `MISE_ENV=staging`) loads `mise.staging.toml` on top of `mise.toml`, so the environment's settings reach every task, `mise exec`, and `mise env`. Locally, select the environment for each command with `-E`. CI sets `MISE_ENV` on the job ([ci.md](ci.md#terraform-and-deploy-workflow)). Without either, no environment file loads, and tasks act on the local machine.
+
+```toml
+# mise.staging.toml, loaded by `mise -E staging` or MISE_ENV=staging
+[env]
+DEPLOY_ENV = "staging"     # tasks for deployed environments read the name from here
+FNOX_PROFILE = "staging"   # with fnox: secrets come from the staging vault
+API_BASE_URL = "https://api.staging.acme.example"   # other non-secret settings that tasks, scripts, or tools read
+```
+
+Tested with mise 2026.11.2 (the dry run and the missing-environment error also with 2026.10.21):
+
+- `mise -E staging run tf:plan` plans staging, and `mise -E production run tf:plan` plans production, in the same checkout. Each command line says which environment it touches.
+- Tasks that act only on a deployed environment set `extends = "deployed"` and fail without one, before they run anything: `Required environment variable 'DEPLOY_ENV' is not defined`, followed by the template's help text. A misspelled name (`-E prod`) loads no file and fails the same way.
+- `DEPLOY_ENV = false` in `mise.toml` removes a value inherited from the shell, so `DEPLOY_ENV=production mise run tf:apply` fails too. Only an environment file can select an environment.
+- A value from the environment file wins over the shell: with `-E staging`, a `FNOX_PROFILE=production` exported in the developer's shell does not reach the task.
+- A subdirectory with its own `mise.toml`, such as a service in a monorepo, still loads the root's environment files. Keep them at the repository root.
+
+What goes where:
+
+| Setting | Lives in |
+| --- | --- |
+| The environment's name, `FNOX_PROFILE`, and non-secret settings that tasks, scripts, or tools read (URLs, regions, cluster names, image registries) | `[env]` in `mise.<env>.toml` |
+| Settings that are the same in every environment | `[env]` in `mise.toml` |
+| Terraform inputs | `terraform/environments/<env>/`, so Terraform has one source for them |
+| Secrets | fnox locally, the platform's secret store elsewhere ([secrets.md](secrets.md)) |
+| Tools and tasks | `mise.toml` only. Every environment runs the same versions and the same task definitions. |
+| Personal overrides for one environment | `mise.<env>.local.toml`, gitignored |
+
+Rules:
+
+- The config environments are the deployment environments. There is no `mise.dev.toml` for the laptop: the laptop is what you get without `-E`, with local settings in `mise.toml` and personal ones in `mise.local.toml`. There is no `mise.ci.toml` either, because CI selects the deployment environment it targets, like a laptop does.
+- Never make a deployed environment the default. mise can set one with `env = ["development"]` in a `.miserc.toml` at the repository root, or with `MISE_ENV` exported in a shell profile. Tested with 2026.11.2: a committed `.miserc.toml` then applies to every command in the repository and its subdirectories, so `mise run db:migrate` migrates the deployed development database instead of the local one, and an agent that expects the local machine reaches a shared environment. `-E` and `MISE_ENV` still override it, and only `MISE_ENV=` (empty) gets back to the local machine. So the stack commits no `.miserc.toml`, and the local machine stays the default. A one-off `MISE_ENV=staging` in one terminal works, and the `confirm` prompts name the environment, but `-E` on each command is clearer.
+- `mise -E staging config ls` lists the files that load. `mise -E staging env` prints the resulting variables, which contain no secrets by construction.
+
+To add an environment, see [terraform.md](terraform.md#adding-an-environment).
 
 ## Tools and the lockfile
 
@@ -74,6 +110,7 @@ The versions above were current in October 2026. For a new project, ask mise for
 - `mise use terraform@1.17` adds a tool. `mise install` installs everything. `mise run` installs missing tools before it starts a task.
 - `mise lock` writes `mise.lock`. With `lockfile = true` it already covers the common platforms (Linux, macOS, Windows, x64 and arm64), so macOS laptops and Linux runners share one file.
 - `mise install --locked` installs exactly what the lockfile records. `jdx/mise-action` adds `--locked` itself when the repository has a `mise.lock`.
+- Environment files declare no tools, so they get no `mise.<env>.lock`, and every environment uses `mise.lock`.
 - To upgrade: `mise lock --bump terraform`, then `mise install --locked`, review the lockfile diff, run `mise run check`, and commit both files. To cross a minor version, change the request in `mise.toml` first.
 - `mise.lock` covers tools only. Also keep `uv.lock`, `bun.lock`, and Terraform's `.terraform.lock.hcl`.
 
@@ -171,7 +208,14 @@ run = "bunx tsc --noEmit"
 
 ## Environment variables
 
-`[env]` holds only non-secret configuration, such as `LOG_LEVEL` or `UV_PYTHON_PREFERENCE`. mise loads `[env]` into every task, shell, and `mise env` output, so it is no place for secrets. Locally, secrets come from fnox at the moment a task needs them. In CI, they come from the CI system's secret store (see [secrets.md](secrets.md)). Do not load `.env` files with `_.file` unless they contain only non-secret defaults.
+`[env]` holds only non-secret configuration, such as `LOG_LEVEL` or `UV_PYTHON_PREFERENCE`, in `mise.toml` for every environment and in `mise.<env>.toml` for one. mise loads `[env]` into every task, shell, and `mise env` output, so it is no place for secrets. Locally, secrets come from fnox at the moment a task needs them. In CI and on deployed hosts, they come from the platform (see [secrets.md](secrets.md)). Do not load `.env` files with `_.file` unless they contain only non-secret defaults; per-environment `.env.<env>` files become `mise.<env>.toml`.
+
+A plain `[env]` value overrides a variable of the same name that the caller sets, including one a CI step maps from its secrets. A local default for such a variable uses `{ default = "..." }`, which yields to the caller's value:
+
+```toml
+[env]
+DATABASE_URL = { default = "postgresql://localhost/acme_api" }   # local database; CI's value wins
+```
 
 `[vars]` holds values that only templates need, such as paths and key lists. Vars are not exported to processes.
 
@@ -183,10 +227,7 @@ Write short commands as TOML tasks in `mise.toml`. Move a recipe longer than abo
 
 ```bash
 #!/usr/bin/env bash
-#MISE description="Apply pending database migrations"
-#USAGE arg "[env]" help="Target environment; omit for local" {
-#USAGE   choices "development" "staging" "production"
-#USAGE }
+#MISE description="Apply pending database migrations, locally or to the selected environment"
 set -euo pipefail
 ...
 ```
@@ -199,58 +240,59 @@ Make the file executable (`chmod +x`). A multi-line `run` with a shebang line al
 | --- | --- |
 | `description` | Required on every task. |
 | `run` | A string, or an array of commands that run in order and stop at the first failure. Entries can be `{ task = "name", args = [...] }`. |
-| `depends` | Tasks that finish first. Shared dependencies run once, independent ones in parallel. Pass arguments: `{ task = "tf:init", args = ["{{ usage.env }}"] }`. |
+| `depends` | Tasks that finish first. Shared dependencies run once, independent ones in parallel. |
+| `env` | Task-level variables. The `deployed` template uses it to require `DEPLOY_ENV`. Not passed to `depends`, so each task that needs an environment extends the template itself. |
 | `usage` | Arguments and flags. Values reach the command as `{{ usage.name }}` (rendered before the shell runs) and `$usage_name`. |
-| `extends` | Inherit from a `[task_templates.<name>]`. `usage` specs merge, and the template's arguments come first. |
-| `confirm` | Prompt before the task's own command runs (after its `depends`). |
+| `extends` | Inherit from a `[task_templates.<name>]`. |
+| `confirm` | Prompt before the task's own command runs, after its `depends` have finished and printed their output. |
 | `interactive` | Give the task the terminal, for commands that prompt, such as `terraform destroy`. |
 | `dir` | Working directory. The default is the config root. Prefer the tool's own flag where one exists, such as `terraform -chdir=`. |
 | `sources` / `outputs` | Skip the task while its outputs are newer than its sources. |
 | `hide` | Hide helper tasks from listings. |
 | `vars` | Task-level overrides of `[vars]`. |
 
-### Environment argument
+### Tasks for deployed environments
 
-Define the environment argument once and extend it, so every environment task validates against the same list:
+Define the requirement once in the `deployed` template and extend it, so every such task fails the same way without an environment:
 
 ```toml
-[task_templates.env-arg]
-usage = '''
-arg "<env>" help="Target environment" {
-  choices "development" "staging" "production"
-}
-'''
+[env]
+DEPLOY_ENV = false
+
+[task_templates.deployed]
+env = { DEPLOY_ENV = { required = "Select an environment: mise -E <development|staging|production> run <task>" } }
 
 [tasks.deploy]
-description = "Deploy the application to an environment"
-extends = "env-arg"
-confirm = "Deploy to {{ usage.env }}?"
-run = "./scripts/deploy.sh {{ usage.env }}"
+description = "Deploy the application to the selected environment"
+extends = "deployed"
+confirm = "Deploy to {{ env.DEPLOY_ENV }}?"
+run = "./scripts/deploy.sh {{ env.DEPLOY_ENV }}"
 ```
 
-`mise run deploy prod` fails with `Invalid choice for arg env: prod, expected one of development, staging, production`, and `mise run deploy --help` lists the choices. Templates cannot set `interactive`, `hide`, or `secrets`; set those on each task. For an optional environment, write `arg "[env]"` in the task's own `usage` instead of extending the template.
+Commands read the name as `{{ env.DEPLOY_ENV }}` (rendered, so dry runs show it) or `$DEPLOY_ENV` (in scripts). Templates cannot set `interactive`, `hide`, or `secrets`; set those on each task.
+
+A task that also runs locally, like `db:migrate`, does not extend the template. It checks `DEPLOY_ENV` itself and acts on the local machine when it is empty (see [secrets.md](secrets.md#secrets-in-tasks)).
 
 ### Confirmation
 
 ```toml
-confirm = "Apply the saved Terraform plan to {{ usage.env }}?"
+confirm = "Apply this plan to {{ env.DEPLOY_ENV }}?"
 ```
 
-Without a terminal, as in CI, a task with `confirm` fails with `task requires confirmation but there was nobody to ask; pass --yes to accept`. CI sets `MISE_YES=1` on the steps that are allowed to proceed.
+Without a terminal, as in CI, a task with `confirm` fails with `task requires confirmation but there was nobody to ask; pass --yes to accept`. CI sets `MISE_YES=1` on the steps that are allowed to proceed. Answering no fails the task with `aborted by user`.
 
 ### Running tasks
 
 ```sh
-mise tasks ls                    # names and descriptions
-mise tasks info tf:plan          # the merged definition, including template fields
-mise tasks validate              # config errors in every task
-mise run tf:plan --help          # arguments and choices
-mise run -n tf:plan staging      # dry run: print the commands in order, run nothing
-mise run test -- -k smoke        # pass arguments through to the command
-mise run lint ::: test           # several tasks, in parallel unless one depends on the other
+mise tasks ls                          # names and descriptions
+mise tasks info tf:plan                # the merged definition, including template fields
+mise tasks validate                    # config errors in every task
+mise -E staging run -n --yes tf:apply  # dry run: print the commands in order, run nothing
+mise run test -- -k smoke              # pass arguments through to the command
+mise run lint ::: test                 # several tasks, in parallel unless one depends on the other
 ```
 
-Put mise's own flags before the task name. Everything after the name belongs to the task. Write `mise run <task>`, not the `mise <task>` shorthand, in scripts and docs: a future mise subcommand could take the task's name.
+Put mise's own flags (`-E`, `-n`, `--yes`) before the task name. Everything after the name belongs to the task. A dry run of a task with `confirm` stops at the prompt unless it also gets `--yes`. Write `mise run <task>`, not the `mise <task>` shorthand, in scripts and docs: a future mise subcommand could take the task's name.
 
 ## Monorepos
 
@@ -264,15 +306,9 @@ config_roots = ["services/*", "web"]
 
 - Each listed directory has its own `mise.toml` with bare canonical task names. mise names them `//services/api:test` and so on.
 - `mise run '//...:check'` runs `check` in every project (quote the pattern). Inside a project, `mise run :test` targets the nearest project.
-- Tools and `[env]` from the root config apply to every project. A project can override them.
+- Tools and `[env]` from the root config apply to every project, and so do the root's `mise.<env>.toml` files. A project can override them, and adds its own `mise.<env>.toml` only for values that differ.
 - `mise install --monorepo` installs every project's tools, which is useful for warming CI caches.
-- Keep `tf:*` tasks and the fnox source in the repository root.
-
-## The ci config environment
-
-`MISE_ENV=ci` makes mise load `mise.ci.toml` on top of `mise.toml`. Every workflow sets it. In this stack, `mise.ci.toml` empties the fnox wrappers and skips installing fnox and `pass-cli`, because CI gets secrets from its own secret store. See [ci.md](ci.md#the-ci-config-environment).
-
-Do not create config environments for the deployment environments (`mise.production.toml`). The deployment environment is a task argument, so one checkout can plan staging and production without switching config.
+- Keep `tf:*` tasks, the environment files, and the fnox source in the repository root.
 
 ## Trust and shell activation
 
@@ -281,7 +317,9 @@ Do not create config environments for the deployment environments (`mise.product
 
 ## Pitfalls
 
-- mise expands `$NAME` in `[env]` and `[vars]` values when it loads the config, before any task runs. A `$usage_env` in a var stays unexpanded and prints a warning. Use `{{ usage.env }}` or `$usage_env` in the task's own `run` instead.
+- mise expands `$NAME` in `[env]` and `[vars]` values when it loads the config, before any task runs. A `$DEPLOY_ENV` in a var does not see the value that the environment file sets for the task. Use `{{ env.DEPLOY_ENV }}` or `$DEPLOY_ENV` in the task's own `run` instead.
+- A plain `[env]` value overrides the caller's variable of the same name, including a secret a CI step sets. Use `{ default = "..." }` for local defaults (see [Environment variables](#environment-variables)).
+- `-E` replaces `MISE_ENV` instead of adding to it: `MISE_ENV=staging mise -E production run ...` loads only production.
 - `{{ tools.<name>.path }}` in `[env]` breaks every command until that tool is installed. Avoid tool-path templates in shared config.
 - Glob patterns in `mise run` need quotes (`mise run 'test:*'`), or the shell expands them.
 - A task with `confirm` needs a terminal or `MISE_YES=1`.
@@ -290,6 +328,8 @@ Do not create config environments for the deployment environments (`mise.product
 
 ## Deliberately not used
 
+- **An environment task argument** (`mise run tf:plan staging`). The config environment would still decide which `[env]` loads, so an argument could name a different environment than the loaded config. `-E` selects both at once.
+- **A `ci` config environment.** CI targets a deployment environment like a laptop does. The only CI difference, where secrets come from, is `SECRETS_FROM_ENV` ([secrets.md](secrets.md#secrets-in-tasks)).
 - **`[secrets.fnox]` and task `secrets = [...]`**, added in mise 2026.10.4, are experimental and require `experimental = true` in the committed config. The stack uses the stable `fnox exec` wrapper instead. Revisit when the feature leaves experimental status.
 - **`[deps]` (`mise deps`)** is experimental. `setup` installs dependencies explicitly.
 - **The `mise-env-fnox` plugin and `_.fnox-env`** are deprecated. They put every secret into every task's environment.

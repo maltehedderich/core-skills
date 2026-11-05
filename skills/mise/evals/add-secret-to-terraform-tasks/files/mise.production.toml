@@ -1,0 +1,4 @@
+# Loaded by `mise -E production` locally and MISE_ENV=production in CI.
+[env]
+DEPLOY_ENV = "production"
+FNOX_PROFILE = "production"

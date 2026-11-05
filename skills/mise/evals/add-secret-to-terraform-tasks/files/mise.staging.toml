@@ -1,0 +1,4 @@
+# Loaded by `mise -E staging` locally and MISE_ENV=staging in CI.
+[env]
+DEPLOY_ENV = "staging"
+FNOX_PROFILE = "staging"

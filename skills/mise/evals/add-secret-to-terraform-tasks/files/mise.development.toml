@@ -1,0 +1,4 @@
+# Loaded by `mise -E development` locally and MISE_ENV=development in CI.
+[env]
+DEPLOY_ENV = "development"
+FNOX_PROFILE = "development"

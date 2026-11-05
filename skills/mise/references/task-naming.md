@@ -1,6 +1,6 @@
 # Task naming convention
 
-One action has one name in every repository. Someone who has run `mise run check` or `mise run tf:plan staging` in one project can run the same command in any other without opening its config, and CI templates, docs, and habits carry over. Every rule below serves that goal. Drift usually starts with a reasonable-looking local variant: `tf-apply` in one Makefile, `terraform-apply` in the next, `terraform-apply-development` in a third.
+One action has one name in every repository. Someone who has run `mise run check` or `mise -E staging run tf:plan` in one project can run the same command in any other without opening its config, and CI templates, docs, and habits carry over. Every rule below serves that goal. Drift usually starts with a reasonable-looking local variant: `tf-apply` in one Makefile, `terraform-apply` in the next, `terraform-apply-development` in a third.
 
 ## Contents
 
@@ -16,13 +16,13 @@ One action has one name in every repository. Someone who has run `mise run check
 ## Grammar
 
 ```text
-[<scope>:]<verb>[:<variant>]   [<env>]   [--flags]
+mise [-E <env>] run [<scope>:]<verb>[:<variant>] [--flags]
 ```
 
 - **verb**: from the vocabulary below. It names the action, never the tool (`lint`, not `ruff`).
 - **scope** (optional): a domain with its own verbs (`tf`, `db`, `docker`), or a component in a single-config repository with several components (`api`, `web`).
 - **variant** (optional): a named subset of the verb's work (`test:unit`, `test:e2e`).
-- **env**: a positional argument, never part of the name.
+- **env**: the mise config environment, selected with `-E <env>` before `run`, never part of the name. See [Environments](#environments).
 - Lowercase only. `:` separates parts; a multi-word part uses `-` (`db:reset`, `test:e2e`). Underscores and other separators are not used.
 
 In TOML, quote any name that contains `:`: `[tasks."tf:plan"]`. File tasks get their name from their path: `mise-tasks/tf/plan` is `tf:plan`.
@@ -45,20 +45,20 @@ These are top-level tasks. A project defines only the ones it needs.
 | `typecheck` | Static type checking. | `types`, `type-check`, `tsc`, `mypy`, `pyright` |
 | `check` | Everything CI gates on. Depends on `lint`, `typecheck`, and `test`, whichever exist. | `ci`, `verify`, `validate`, `all`, `precommit`, `pre-commit` |
 | `clean` | Delete generated files that `setup` or `build` can recreate. Never deletes state, data, or secrets. | `clobber`, `distclean`, `purge` |
-| `deploy <env>` | Ship the application to a deployed environment. | `release`, `ship`, `push`, `deploy-prod`, `deploy-staging` |
+| `deploy` | Ship the application to the selected environment. | `release`, `ship`, `push`, `deploy-prod`, `deploy-staging` |
 | `publish` | Publish a package to a registry (PyPI, npm). | `release`, `upload` |
 
 ### Terraform: `tf:`
 
-The scope is always `tf`, never `terraform`, `infra`, or `iac`. These tasks live in the repository-root `mise.toml`. See [terraform.md](terraform.md) for the definitions.
+The scope is always `tf`, never `terraform`, `infra`, or `iac`. These tasks live in the repository-root `mise.toml`. See [terraform.md](terraform.md) for the definitions. Every `tf:*` task except `tf:lint` and `tf:format` acts on the environment selected with `-E` and fails without one.
 
 | Task | What it does |
 | --- | --- |
-| `tf:init <env>` | `terraform init` in `terraform/environments/<env>`. |
-| `tf:plan <env>` | Init, then plan and save the plan to `tfplan`. |
-| `tf:apply <env>` | Apply the saved `tfplan`. Asks for confirmation. |
-| `tf:destroy <env>` | Destroy the environment's resources. Terraform asks for confirmation. |
-| `tf:output <env>` | Print the environment's outputs. |
+| `tf:init` | `terraform init` in `terraform/environments/<env>`. |
+| `tf:plan` | Init, then plan and save the plan to `tfplan`. |
+| `tf:apply` | Plan, print the plan, ask for confirmation, and apply exactly that plan. Needs no separate `tf:plan`. |
+| `tf:destroy` | Destroy the environment's resources. Terraform asks for confirmation. |
+| `tf:output` | Print the environment's outputs. |
 | `tf:lint` | `terraform fmt -check` and `terraform validate` for every environment. Needs no secrets. |
 | `tf:format` | `terraform fmt -recursive terraform`. |
 
@@ -68,9 +68,9 @@ The scope is always `tf`, never `terraform`, `infra`, or `iac`. These tasks live
 
 | Task | What it does |
 | --- | --- |
-| `db:migrate [env]` | Apply pending migrations. |
-| `db:seed [env]` | Load seed data. |
-| `db:reset` | Drop and recreate the local database. Local only, never takes `<env>`. |
+| `db:migrate` | Apply pending migrations: locally, or with `-E <env>` to that environment. |
+| `db:seed` | Load seed data: locally, or with `-E <env>` to that environment. |
+| `db:reset` | Drop and recreate the local database. Local only: the task exits with an error when `DEPLOY_ENV` is set. |
 | `db:start`, `db:stop` | Start or stop the local database service. |
 
 ### Containers: `docker:`
@@ -78,12 +78,12 @@ The scope is always `tf`, never `terraform`, `infra`, or `iac`. These tasks live
 | Task | What it does |
 | --- | --- |
 | `docker:build` | Build the image. |
-| `docker:push <env>` | Push the image for an environment. |
+| `docker:push` | Push the image for the selected environment. |
 
 ## Rules
 
 1. **Look up the name before writing a task.** If a verb above fits, use it exactly. The "Replaces" column lists names that must not appear.
-2. **No environment in the name.** `tf:apply production`, not `tf:apply-production` or `terraform-apply-prod`. See [Environments](#environments).
+2. **No environment in the name.** `mise -E production run tf:apply`, not `tf:apply-production` or `terraform-apply-prod`. See [Environments](#environments).
 3. **No tool in the name** unless the tool is the scope. `test` runs pytest or `bun test`; `format` runs ruff or Biome. Projects can switch tools without renaming tasks.
 4. **One name per action, no aliases.** Legacy spellings do not survive as `alias` entries, because aliases keep the old vocabulary alive. Personal shorthands belong in shell aliases (`alias mr='mise run'`).
 5. **Aggregates list their parts explicitly.** `check` uses `depends = ["lint", "typecheck", "test"]`, not a wildcard, so the gate is readable and a missing task fails loudly.
@@ -95,12 +95,12 @@ The scope is always `tf`, never `terraform`, `infra`, or `iac`. These tasks live
 
 ## Environments
 
-The environments are `development`, `staging`, and `production`. The same spelling is used for the task argument, the Terraform directory, the GitHub environment, and, with fnox, the profile and the Proton Pass vault suffix. Never abbreviate them (`dev`, `stg`, `prod`): one spelling means one string to search for, and the argument's `choices` reject anything else.
+The environments are `development`, `staging`, and `production`. Each one is a mise config environment with a `mise.<env>.toml` (see [mise.md](mise.md#environments)). The same spelling is used for the config file and `-E`, the Terraform directory, the GitHub environment, and, with fnox, the profile and the vault suffix. Never abbreviate them (`dev`, `stg`, `prod`): one spelling means one string to search for, and `mise -E prod` loads no file and fails.
 
-- Tasks that act only on deployed environments take a **required** `<env>`: `tf:*` (except `tf:lint` and `tf:format`), `deploy`, `docker:push`. There is no default, so forgetting the argument fails instead of reaching some environment.
-- Tasks that also run against the local machine take an **optional** `[env]`, and omitting it means local: `db:migrate`, `db:seed`. Never default to a deployed environment.
-- `development` is the deployed development environment, not the laptop.
-- Define the argument once in the `env-arg` task template so the choices list cannot drift between tasks (see [mise.md](mise.md#environment-argument)).
+- Tasks that act only on deployed environments extend the `deployed` template, which requires `DEPLOY_ENV`: `tf:*` (except `tf:lint` and `tf:format`), `deploy`, `docker:push`. Without `-E` they fail instead of reaching some environment, because nothing but an environment file sets `DEPLOY_ENV`.
+- Tasks that also run against the local machine do not extend the template. They check `DEPLOY_ENV` and act locally when it is empty: `db:migrate`, `db:seed`. They never default to a deployed environment.
+- `development` is the deployed development environment, not the laptop. The laptop is what you get without `-E`.
+- Every task has one definition for all environments. Environment files change settings (`[env]`), never tasks or tools.
 
 ## Flags or variants
 
@@ -111,7 +111,7 @@ A different **subset** of the work is a variant: `test:unit`, `test:e2e`. A diff
 In mise monorepo mode the project path is the scope: `//services/api:test`, `//web:lint`. Each project uses the bare canonical names in its own `mise.toml`. Do not prefix them again (`api:test` inside `services/api`).
 
 - Run a verb across all projects with `mise run '//...:check'`. Do not define a root `check` that calls the same pattern, because `//...` includes the root and the task would match itself.
-- `tf:*` tasks stay in the repository-root `mise.toml`, so `mise run tf:plan staging` is the same command in single-project repositories and monorepos.
+- `tf:*` tasks and the environment files stay in the repository root, so `mise -E staging run tf:plan` is the same command in single-project repositories and monorepos.
 - In a single-config repository with separately built components, scope by component (`api:test`, `web:build`) and let the lifecycle task depend on them: `test` depends on `["api:test", "web:test"]`.
 
 ## Renaming legacy targets
@@ -120,8 +120,9 @@ Typical mappings when migrating from Make, just, or package scripts:
 
 | Legacy names | Canonical |
 | --- | --- |
-| `tf-apply`, `terraform-apply`, `terraform-apply-development`, `apply-dev` | `tf:apply <env>`, for example `mise run tf:apply development` |
-| `tf-plan-prod`, `plan-production`, `terraform-plan` | `tf:plan <env>` |
+| `tf-apply`, `terraform-apply`, `terraform-apply-development`, `apply-dev` | `tf:apply`, for example `mise -E development run tf:apply` |
+| `tf-plan-prod`, `plan-production`, `terraform-plan` | `tf:plan`, for example `mise -E production run tf:plan` |
+| A plan target followed by an apply target (`make plan && make apply`) | `tf:apply`, which plans and asks itself |
 | `tf-fmt`, `terraform-fmt` | `tf:format` |
 | `tf-validate`, `terraform-validate`, `tf-check` | `tf:lint` |
 | `install`, `deps`, `bootstrap`, `init` | `setup` |
@@ -131,8 +132,9 @@ Typical mappings when migrating from Make, just, or package scripts:
 | `test-unit`, `unit`, `tests-unit` | `test:unit` |
 | `test-watch`, `watch-test` | `test --watch` (a flag, not a task) |
 | `docker-build`, `build-image`, `image` | `docker:build` |
-| `migrate`, `db-migrate`, `migrate-prod` | `db:migrate [env]` |
-| `deploy-staging`, `deploy-prod`, `release-production` | `deploy <env>` |
+| `migrate`, `db-migrate`, `migrate-prod` | `db:migrate`, with `-E production` for `migrate-prod` |
+| `deploy-staging`, `deploy-prod`, `release-production` | `deploy`, for example `mise -E staging run deploy` |
+| `ENV=prod make <target>`, `make <target> ENV=prod` | `mise -E production run <task>` |
 
 When two legacy targets with the same canonical name do different things, find out which behavior is intended before merging them. Never pick one silently.
 
